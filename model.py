@@ -26,8 +26,16 @@ class ABMIL_Multimodal(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.attention_weights = nn.Linear(inner_dim, 1)
 
-        final_layer_input_dim = inner_dim
-        self.output_layer = nn.Linear(final_layer_input_dim, output_dim)
+        #final_layer_input_dim = inner_dim
+        #self.output_layer = nn.Linear(final_layer_input_dim, output_dim)
+
+        '''self.fc1 = nn.Linear(inner_dim, inner_dim//4) # 64 => 16
+        self.fc2 = nn.Linear(inner_dim//4, inner_dim//16) # 16 => 4
+        self.fc3 = nn.Linear(inner_dim//16, output_dim) # 4 => 1'''
+
+        self.fc1 = nn.Linear(inner_dim, inner_dim//4) # 64 => 16
+        self.fc2 = nn.Linear(inner_dim//4, output_dim) # 16 => 1
+   
         
     def forward(self, data):
         x = data
@@ -49,11 +57,12 @@ class ABMIL_Multimodal(nn.Module):
         weighted_sum = self.dropout(weighted_sum)
 
         # Final WSI embedding
-        wsi_embedding = weighted_sum
-
-        x = wsi_embedding
+        x = weighted_sum
         
-        output = torch.sigmoid(self.output_layer(x)) # Shape: (batch_size, output_dim)
+        #output = torch.sigmoid(self.output_layer(x)) # Shape: (batch_size, output_dim)
+
+        x = torch.relu(self.fc1(x))
+        output = torch.sigmoid(self.fc2(x))
         
         return output
 

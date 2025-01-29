@@ -11,7 +11,7 @@ from model import ABMIL_Multimodal
 from dataset import UNIDataset
 
 import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=UserWarning) 
 
 parser = argparse.ArgumentParser(description='BRCA overexprection')
 parser.add_argument('--seed', '-s', type=int, default=42,
