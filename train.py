@@ -55,18 +55,66 @@ else:
 print(f'Predicting {args.label} overexprection')
 
 
+#####################################################################à
+
+class EarlyStopping:
+    def __init__(self, patience=5, verbose=False):
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_loss = float('inf')
+
+    def __call__(self, loss):
+        if loss < self.best_loss:
+            self.best_loss = loss
+            self.counter = 0
+            if self.verbose:
+                print(f'New best loss: {self.best_loss}')
+        else:
+            self.counter += 1
+            if self.verbose:
+                print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                return True
+        return False
+
+
+
 csv_file = args.labels_file
 data_dir = args.data_directory
 
 data_frame = pd.read_csv(csv_file)
 
-train_df, test_df = train_test_split(data_frame, test_size=0.2, random_state=SEED)
+
+test_size=0.15
+val_size=0.15
+train_val_df, test_df = train_test_split(data_frame, test_size=test_size, stratify = data_frame[args.label], random_state=SEED)
+val_size_adjusted = val_size / (1 - test_size)
+train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)
+
+##########Print di controllo##################
+
+'''print("Train set class distribution:")
+print(train_df.shape[0])
+print(train_df[args.label].value_counts(normalize=True))
+
+print("\nValidation set class distribution:")
+print(val_df.shape[0])
+print(val_df[args.label].value_counts(normalize=True))
+
+print("\nTest set class distribution:")
+print(test_df.shape[0])
+print(test_df[args.label].value_counts(normalize=True))'''
+
+##############################################
 
 train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.label)
 #test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label)
+val_dataset = UNIDataset(data_frame=val_df, data_dir=data_dir, label = args.label)
 
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 #test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
+val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 
 model = ABMIL(use_layernorm=True).to(device)
 #model = MHMIL(use_layernorm=True).to(device)
@@ -75,11 +123,13 @@ learning_rate = 0.0001
 optimizer = Adam(model.parameters(), lr=learning_rate)
 criterion = nn.BCELoss().to(device)
 
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
 for e in range(EPOCHS):
     model.train()
     running_loss= 0.0
-    print(f'Start epoch: {e}')
-    for i, (data, label) in tqdm(enumerate(train_loader)):
+
+    for data, label in tqdm(train_loader):
         data = data.to(device)
         label = label.to(device)
 
@@ -93,9 +143,27 @@ for e in range(EPOCHS):
         optimizer.step()
 
     epoch_loss = running_loss / len(train_loader)
-    print(f'Loss epoch {e + 1}/{EPOCHS}: {epoch_loss:.4f}')
+    print(f'Epoch {e + 1}/{EPOCHS}, Taining Loss: {epoch_loss:.4f}')
 
     torch.cuda.empty_cache()
+
+    #Validation
+    model.eval()
+    val_loss = 0.0
+    with torch.no_grad():
+        for data, label in tqdm(val_loader):
+            data = data.to(device)
+            label = label.to(device)
+            output = model(data)
+            loss = criterion(output, label)
+            val_loss += loss.item()
+
+    val_loss /= len(val_loader)
+    print(f'Epoch {e+1}/{EPOCHS}, Validation Loss: {val_loss:.4f}')
+
+    if early_stopping(val_loss):
+        print("Early stopped")
+        break
 
 torch.save(model.state_dict(), './model_weights.pth')
 print('Model saved')
