@@ -7,8 +7,19 @@ import pandas as pd
 import argparse
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from model import ABMIL_Multimodal
+from models import *
 from dataset import UNIDataset
+from sklearn.metrics import (
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    log_loss,
+    accuracy_score,
+    matthews_corrcoef,
+    classification_report
+)
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) 
@@ -47,7 +58,7 @@ else:
     device = 'cpu'
     print('No GPU!')
 
-print(f'Testing {args.label} overexprection')
+print(f'Testing {args.label} over exprection')
 
 
 csv_file = args.labels_file
@@ -63,25 +74,56 @@ test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.la
 #train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
 
-model = ABMIL_Multimodal()
+model = ABMIL(use_layernorm=True)
+#model = MHMIL(use_layernorm=True)
+
 model.load_state_dict(torch.load('./model_weights.pth'))
 model = model.to(device)
 model.eval()
 
 with torch.no_grad():
-    y_pred_list = []
-    y_test_list = []
+    y_pred = []
+    y_true = []
     for data, label in tqdm(test_loader):
         data = data.to(device)
         label = label.to(device)
-        outputs = model(data)
-        y_pred_list.append(outputs)
-        y_test_list.append(label)
+        output = model(data)
+        y_pred.append(output)
+        y_true.append(label)
 
-    y_pred_tensor = torch.cat(y_pred_list)
-    y_test_tensor = torch.cat(y_test_list)
-    y_pred_class = (y_pred_tensor > 0.5).float()
+    y_pred = torch.cat(y_pred)
+    y_true = torch.cat(y_true)
 
-# Calcola l'accuratezza
-accuracy = (y_pred_class.eq(y_test_tensor).sum() / y_test_tensor.size(0)).item()
-print(f'Accuracy: {accuracy:.4f}')
+y_pred = y_pred.cpu()
+y_true = y_true.cpu()
+y_pred_binary = (y_pred > 0.5).float()
+
+accuracy = accuracy_score(y_true.numpy(), y_pred_binary.numpy())
+
+precision = precision_score(y_true.numpy(), y_pred_binary.numpy())
+
+recall = recall_score(y_true.numpy(), y_pred_binary.numpy())
+
+f1 = f1_score(y_true.numpy(), y_pred_binary.numpy())
+
+auc_roc = roc_auc_score(y_true.numpy(), y_pred.numpy())
+
+conf_matrix = confusion_matrix(y_true.numpy(), y_pred_binary.numpy(), normalize='true')
+
+log_loss_value = log_loss(y_true.numpy(), y_pred.numpy())
+
+mcc = matthews_corrcoef(y_true, y_pred_binary)
+
+class_report = classification_report(y_true, y_pred_binary)
+
+print(f"Accuracy: {accuracy:.4f}\n")
+print(f"Precision: {precision:.4f}\n")
+print(f"Recall: {recall:.4f}\n")
+print(f"F1 Score: {f1:.4f}\n")
+print(f"AUC-ROC: {auc_roc:.4f}\n")
+print(f"Log Loss: {log_loss_value:.4f}\n")
+print(f"Matthews Correlation Coefficient (MCC): {mcc:.4f}\n")
+print(f"Confusion Matrix:\n{np.round(conf_matrix, 2)}\n")
+print(f"Classification Report:\n{class_report}\n")
+
+

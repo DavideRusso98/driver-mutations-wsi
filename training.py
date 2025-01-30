@@ -9,9 +9,8 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from torch.optim import Adam
 import torch.nn as nn
-from model import ABMIL_Multimodal
+from models import *
 from dataset import UNIDataset
-import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -69,39 +68,34 @@ train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 #test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
 
-model = ABMIL_Multimodal().to(device)
+model = ABMIL(use_layernorm=True).to(device)
+#model = MHMIL(use_layernorm=True).to(device)
 
 learning_rate = 0.0001
 optimizer = Adam(model.parameters(), lr=learning_rate)
 criterion = nn.BCELoss().to(device)
 
-loss_list = []
 for e in range(EPOCHS):
     model.train()
+    running_loss= 0.0
     print(f'Start epoch: {e}')
     for i, (data, label) in tqdm(enumerate(train_loader)):
         data = data.to(device)
         label = label.to(device)
 
         optimizer.zero_grad()
+
         output = model(data)
 
         loss = criterion(output, label)
-        loss_list.append(loss.item())
+        running_loss += loss.item()
         loss.backward()
         optimizer.step()
-    print(f'Loss epoch {e}: {loss.item()}')
+
+    epoch_loss = running_loss / len(train_loader)
+    print(f'Loss epoch {e + 1}/{EPOCHS}: {epoch_loss:.4f}')
 
     torch.cuda.empty_cache()
 
 torch.save(model.state_dict(), './model_weights.pth')
 print('Model saved')
-plt.plot(range(len(loss_list)), loss_list)
-plt.xlabel('iteration')
-plt.ylabel('loss')
-plt.title('train loss')
-plt.savefig('./train_loss.png')
-with open('./loss_log.txt', 'w') as f:
-    for l in loss_list:
-        f.write(f'{l}\n')
-print('Loss saved')
