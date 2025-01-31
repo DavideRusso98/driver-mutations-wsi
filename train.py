@@ -7,7 +7,7 @@ import pandas as pd
 import argparse
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from torch.optim import Adam
+from torch.optim import Adam, RAdam
 import torch.nn as nn
 from models import *
 from dataset import UNIDataset
@@ -86,41 +86,28 @@ data_dir = args.data_directory
 data_frame = pd.read_csv(csv_file)
 
 
-test_size=0.15
+'''test_size=0.15
 val_size=0.15
 train_val_df, test_df = train_test_split(data_frame, test_size=test_size, stratify = data_frame[args.label], random_state=SEED)
 val_size_adjusted = val_size / (1 - test_size)
-train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)
+train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)'''
 
-##########Print di controllo##################
-
-'''print("Train set class distribution:")
-print(train_df.shape[0])
-print(train_df[args.label].value_counts(normalize=True))
-
-print("\nValidation set class distribution:")
-print(val_df.shape[0])
-print(val_df[args.label].value_counts(normalize=True))
-
-print("\nTest set class distribution:")
-print(test_df.shape[0])
-print(test_df[args.label].value_counts(normalize=True))'''
-
-##############################################
+train_df, test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
 
 train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.label)
 #test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label)
-val_dataset = UNIDataset(data_frame=val_df, data_dir=data_dir, label = args.label)
+#val_dataset = UNIDataset(data_frame=val_df, data_dir=data_dir, label = args.label)
 
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 #test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
+#val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 
 model = ABMIL(use_layernorm=True).to(device)
 #model = MHMIL(use_layernorm=True).to(device)
 
-learning_rate = 0.0001
-optimizer = Adam(model.parameters(), lr=learning_rate)
+LR = 0.001
+WEIGHT_DECAY = 0.0001
+optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 criterion = nn.BCELoss().to(device)
 
 early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -147,7 +134,7 @@ for e in range(EPOCHS):
 
     torch.cuda.empty_cache()
 
-    #Validation
+    '''#Validation
     model.eval()
     val_loss = 0.0
     with torch.no_grad():
@@ -163,7 +150,7 @@ for e in range(EPOCHS):
 
     if early_stopping(val_loss):
         print("Early stopped")
-        break
+        break'''
 
 torch.save(model.state_dict(), './model_weights.pth')
 print('Model saved')

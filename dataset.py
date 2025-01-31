@@ -19,7 +19,7 @@ class UNIDataset(Dataset):
         label = label.unsqueeze(0)
 
         file_path = os.path.join(self.data_dir, file_name)
-        data = torch.load(file_path + '.pt')
+        data = torch.load(file_path + '.pt', weights_only=True)
 
         if self.transform:
             data = self.transform(data)

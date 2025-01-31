@@ -51,7 +51,7 @@ class ABMIL(nn.Module):
         # Final WSI embedding
         x = weighted_sum
 
-        x = torch.relu(self.fc1(x)) # relu o tanh
+        x = torch.tanh(self.fc1(x)) # relu o tanh
         output = torch.sigmoid(self.fc2(x))
         
         return output
