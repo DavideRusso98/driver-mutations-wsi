@@ -10,7 +10,7 @@ This project aims to train a model to distinguish between breast cancer patients
 ```
 
 # Best result
-
+```
 Accuracy: 0.6918
 
 Precision: 0.7280
@@ -38,3 +38,4 @@ Classification Report:
     accuracy                           0.69       159
    macro avg       0.64      0.61      0.61       159
 weighted avg       0.67      0.69      0.67       159
+```
