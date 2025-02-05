@@ -1,31 +1,37 @@
 # Attention map
 ![Attentionmap on different patches](https://github.com/DavideRusso98/driver-mutations-wsi/blob/simple_training/attention_map_val.png?raw=true)
 
-# Best result
+# Result
 ```
-Accuracy: 0.6918
+Testing BRCA1 over exprection
 
-Precision: 0.7280
+Accuracy: 0.6509
 
-Recall: 0.8585
+Precision: 0.6959
 
-F1 Score: 0.7879
+Recall: 0.8440
 
-AUC-ROC: 0.6737
+F1 Score: 0.7628
 
-Log Loss: 0.6360
+AUC-ROC: 0.6288
 
-Matthews Correlation Coefficient (MCC): 0.2495
+Log Loss: 0.6699
+
+Matthews Correlation Coefficient (MCC): 0.1333
 
 Confusion Matrix:
-[[0.36 0.64]
- [0.14 0.86]]
+[[0.27 0.73]
+ [0.16 0.84]]
 
 Classification Report:
               precision    recall  f1-score   support
 
-         0.0       0.56      0.36      0.44        53
-         1.0       0.73      0.86      0.79       106
+         0.0       0.46      0.27      0.34        71
+         1.0       0.70      0.84      0.76       141
+
+    accuracy                           0.65       212
+   macro avg       0.58      0.56      0.55       212
+weighted avg       0.62      0.65      0.62       212
 
     accuracy                           0.69       159
    macro avg       0.64      0.61      0.61       159
