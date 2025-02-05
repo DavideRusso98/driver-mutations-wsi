@@ -97,7 +97,7 @@ with torch.no_grad():
     for data, label in tqdm(test_loader):
         data = data.to(device)
         label = label.to(device)
-        output = model(data)
+        output, _ = model(data)
         y_pred.append(output)
         y_true.append(label)
 

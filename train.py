@@ -92,7 +92,7 @@ train_val_df, test_df = train_test_split(data_frame, test_size=test_size, strati
 val_size_adjusted = val_size / (1 - test_size)
 train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)'''
 
-train_df, test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
+train_df, test_df = train_test_split(data_frame, test_size=0.3, stratify = data_frame[args.label], random_state=SEED)
 
 train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.label)
 #test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label)
@@ -105,8 +105,9 @@ train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=
 model = ABMIL(use_layernorm=True).to(device)
 #model = MHMIL(use_layernorm=True).to(device)
 
-LR = 0.001
+LR = 0.0001
 WEIGHT_DECAY = 0.0001
+NUM_ACCUMULATION_STEPS = 8
 optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 criterion = nn.BCELoss().to(device)
 
@@ -116,17 +117,18 @@ for e in range(EPOCHS):
     model.train()
     running_loss= 0.0
 
-    for data, label in tqdm(train_loader):
+    for idx, (data, label) in enumerate(tqdm(train_loader)):
         data = data.to(device)
         label = label.to(device)
 
         optimizer.zero_grad()
 
-        output = model(data)
-
+        output, _ = model(data)
         loss = criterion(output, label)
+
         running_loss += loss.item()
         loss.backward()
+
         optimizer.step()
 
     epoch_loss = running_loss / len(train_loader)
