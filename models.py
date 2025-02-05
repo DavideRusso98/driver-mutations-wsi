@@ -26,9 +26,9 @@ class ABMIL(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.attention_weights = nn.Linear(inner_dim, 1)
 
-        #self.fc1 = nn.Linear(inner_dim, inner_dim//4)
-        #self.fc2 = nn.Linear(inner_dim//4, output_dim)
-        self.fc2 = nn.Linear(inner_dim, output_dim)
+        self.fc1 = nn.Linear(inner_dim, inner_dim//4)
+        self.fc2 = nn.Linear(inner_dim//4, output_dim)
+        #self.fc2 = nn.Linear(inner_dim, output_dim)
    
         
     def forward(self, data):
@@ -52,7 +52,7 @@ class ABMIL(nn.Module):
         # Final WSI embedding
         x = weighted_sum
 
-        #x = torch.tanh(self.fc1(x)) # relu o tanh
+        x = torch.tanh(self.fc1(x)) # relu o tanh
         output = torch.sigmoid(self.fc2(x))
         
         return output, attn_scores
