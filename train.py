@@ -92,7 +92,7 @@ train_val_df, test_df = train_test_split(data_frame, test_size=test_size, strati
 val_size_adjusted = val_size / (1 - test_size)
 train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)'''
 
-train_df, test_df = train_test_split(data_frame, test_size=0.3, stratify = data_frame[args.label], random_state=SEED)
+train_df, test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
 
 train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.label)
 #test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label)
