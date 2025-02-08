@@ -1,6 +1,9 @@
 # Attention map
 ![Attentionmap on different patches](https://github.com/DavideRusso98/driver-mutations-wsi/blob/simple_training/attention_map_val.png?raw=true)
 
+# Patch-level attention map
+![Patch-level attention map](https://github.com/DavideRusso98/driver-mutations-wsi/blob/simple_training/old_attention_map_val.png?raw=true)
+
 # Result
 ```
 Testing BRCA1 over exprection
