@@ -121,16 +121,17 @@ NUM_ACCUMULATION_STEPS = 8
 optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 criterion = nn.BCELoss().to(device)
 
-early_stopping = EarlyStopping(patience=EPOCHS, verbose=True)
 
 for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     print(f'#########  Fold {f+1}/{FOLDS}  #########')
 
-    train_dataset = UNIDataset(data_frame=train_val_df.iloc[train_index], data_dir=data_dir, label = args.label)
-    val_dataset = UNIDataset(data_frame=train_val_df.iloc[val_index], data_dir=data_dir, label = args.label)
+    train_dataset = UNIDataset(data_frame=train_val_df.iloc[train_index], data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
+    val_dataset = UNIDataset(data_frame=train_val_df.iloc[val_index], data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
 
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
+
+    early_stopping = EarlyStopping(patience=EPOCHS, verbose=True)
 
 
     for e in range(EPOCHS):
