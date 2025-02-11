@@ -33,10 +33,13 @@ parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_su
                         help='label file path')
 parser.add_argument('--label', type=str, default='BRCA1',
                         help='Label to use for training')
+parser.add_argument('--folds', '-f', type=int, default=5,
+                    help='Number of folds')
 
 args = parser.parse_args()
 
 SEED = args.seed
+FOLDS = args.folds
 
 def setup(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -58,7 +61,7 @@ else:
     device = 'cpu'
     print('No GPU!')
 
-print(f'Testing {args.label} over exprection')
+print(f'Testing {args.label} over exprection\n')
 
 
 csv_file = args.labels_file
@@ -66,74 +69,101 @@ data_dir = args.data_directory
 
 data_frame = pd.read_csv(csv_file)
 
+_ , test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
 
-
-'''test_size=0.15
-val_size=0.15
-train_val_df, test_df = train_test_split(data_frame, test_size=test_size, stratify = data_frame[args.label], random_state=SEED)
-val_size_adjusted = val_size / (1 - test_size)
-train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)
-'''
-train_df, test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
-
-#train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.label)
 test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label)
-#val_dataset = UNIDataset(data_frame=val_df, data_dir=data_dir, label = args.label)
-
-#train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
-#val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 
 model = ABMIL(use_layernorm=True)
-#model = MHMIL(use_layernorm=True)
 
-model.load_state_dict(torch.load('./model_weights.pth'))
-model = model.to(device)
-model.eval()
+results = {
+    'accuracy': [],
+    'precision': [],
+    'recall': [],
+    'f1': [],
+    'auc_roc': [],
+    'log_loss': [],
+    'mcc': [],
+    'confusion_matrices': []
+}
 
-with torch.no_grad():
-    y_pred = []
-    y_true = []
-    for data, label in tqdm(test_loader):
-        data = data.to(device)
-        label = label.to(device)
-        output, _ = model(data)
-        y_pred.append(output)
-        y_true.append(label)
+for f in range(FOLDS):
 
-    y_pred = torch.cat(y_pred)
-    y_true = torch.cat(y_true)
+    print(f'######## Testing model {f+1} ########\n')
 
-y_pred = y_pred.cpu()
-y_true = y_true.cpu()
-y_pred_binary = (y_pred > 0.5).float()
+    model.load_state_dict(torch.load(f'./model_weights_{f+1}.pth'))
+    model = model.to(device)
+    model.eval()
 
-accuracy = accuracy_score(y_true.numpy(), y_pred_binary.numpy())
+    with torch.no_grad():
+        y_pred = []
+        y_true = []
+        for data, label in tqdm(test_loader):
+            data = data.to(device)
+            label = label.to(device)
+            output, _ = model(data)
+            y_pred.append(output)
+            y_true.append(label)
 
-precision = precision_score(y_true.numpy(), y_pred_binary.numpy())
+        y_pred = torch.cat(y_pred)
+        y_true = torch.cat(y_true)
 
-recall = recall_score(y_true.numpy(), y_pred_binary.numpy())
+    y_pred = y_pred.cpu()
+    y_true = y_true.cpu()
+    y_pred_binary = (y_pred > 0.5).float()
 
-f1 = f1_score(y_true.numpy(), y_pred_binary.numpy())
+    accuracy = accuracy_score(y_true.numpy(), y_pred_binary.numpy())
+    precision = precision_score(y_true.numpy(), y_pred_binary.numpy())
+    recall = recall_score(y_true.numpy(), y_pred_binary.numpy())
+    f1 = f1_score(y_true.numpy(), y_pred_binary.numpy())
+    auc_roc = roc_auc_score(y_true.numpy(), y_pred.numpy())
+    conf_matrix = confusion_matrix(y_true.numpy(), y_pred_binary.numpy(), normalize='true')
+    log_loss_value = log_loss(y_true.numpy(), y_pred.numpy())
+    mcc = matthews_corrcoef(y_true, y_pred_binary)
+    class_report = classification_report(y_true, y_pred_binary)
 
-auc_roc = roc_auc_score(y_true.numpy(), y_pred.numpy())
+    results['accuracy'].append(accuracy)
+    results['precision'].append(precision)
+    results['recall'].append(recall)
+    results['f1'].append(f1)
+    results['auc_roc'].append(auc_roc)
+    results['log_loss'].append(log_loss_value)
+    results['mcc'].append(mcc)
+    results['confusion_matrices'].append(conf_matrix)
 
-conf_matrix = confusion_matrix(y_true.numpy(), y_pred_binary.numpy(), normalize='true')
+    print(f"Accuracy: {accuracy:.4f}\n")
+    print(f"Precision: {precision:.4f}\n")
+    print(f"Recall: {recall:.4f}\n")
+    print(f"F1 Score: {f1:.4f}\n")
+    print(f"AUC-ROC: {auc_roc:.4f}\n")
+    print(f"Log Loss: {log_loss_value:.4f}\n")
+    print(f"Matthews Correlation Coefficient (MCC): {mcc:.4f}\n")
+    print(f"Confusion Matrix:\n{np.round(conf_matrix, 2)}\n")
+    print(f"Classification Report:\n{class_report}\n")
 
-log_loss_value = log_loss(y_true.numpy(), y_pred.numpy())
+mean_results = {metric: np.mean(values) for metric, values in results.items() if metric not in ['confusion_matrices']}
+cf_mean = np.mean(results['confusion_matrices'], axis=0)
 
-mcc = matthews_corrcoef(y_true, y_pred_binary)
+print("########################################\n")
+print("############# Final Report #############\n")
+print("########################################\n")
+for metric, mean_value in mean_results.items():
+    print(f"{metric.capitalize()}: {mean_value:.4f}\n")
+print(f'Confusion Matrix:\n{np.round(cf_mean, 2)}')
 
-class_report = classification_report(y_true, y_pred_binary)
+metric = 'accuracy'
+best_model_index = np.argmax(results[metric])
+print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][best_model_index]:.4f}")
 
-print(f"Accuracy: {accuracy:.4f}\n")
-print(f"Precision: {precision:.4f}\n")
-print(f"Recall: {recall:.4f}\n")
-print(f"F1 Score: {f1:.4f}\n")
-print(f"AUC-ROC: {auc_roc:.4f}\n")
-print(f"Log Loss: {log_loss_value:.4f}\n")
-print(f"Matthews Correlation Coefficient (MCC): {mcc:.4f}\n")
-print(f"Confusion Matrix:\n{np.round(conf_matrix, 2)}\n")
-print(f"Classification Report:\n{class_report}\n")
+metric = 'f1'
+best_model_index = np.argmax(results[metric])
+print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][best_model_index]:.4f}")
+
+metric = 'auc_roc'
+best_model_index = np.argmax(results['auc_roc'])
+print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][best_model_index]:.4f}")
+
+
+
 
 
