@@ -74,7 +74,7 @@ _ , test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[
 test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
 
-model = ABMIL(use_layernorm=True)
+model = SATMIL(use_layernorm=True)
 
 results = {
     'accuracy': [],

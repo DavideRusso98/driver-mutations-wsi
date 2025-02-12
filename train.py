@@ -112,18 +112,8 @@ X = train_val_df.drop(args.label, axis = 1)
 
 skf = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=SEED)
 
-model = ABMIL(use_layernorm=True).to(device)
-
-
-LR = 0.0001
-WEIGHT_DECAY = 0.0001
-NUM_ACCUMULATION_STEPS = 8
-optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-criterion = nn.BCELoss().to(device)
-
-
 for f, (train_index, val_index) in enumerate(skf.split(X, y)):
-    print(f'#########  Fold {f+1}/{FOLDS}  #########')
+    print(f'\n#########  Fold {f+1}/{FOLDS}  #########\n')
 
     train_dataset = UNIDataset(data_frame=train_val_df.iloc[train_index], data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
     val_dataset = UNIDataset(data_frame=train_val_df.iloc[val_index], data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
@@ -131,7 +121,16 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 
-    early_stopping = EarlyStopping(patience=EPOCHS, verbose=True)
+    LR = 0.0001
+    WEIGHT_DECAY = 0.0001
+    NUM_ACCUMULATION_STEPS = 8
+    PATIENCE = 5
+
+    model = SATMIL(use_layernorm=True).to(device)
+    optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    criterion = nn.BCELoss().to(device)
+
+    early_stopping = EarlyStopping(patience=PATIENCE, verbose=True)
 
 
     for e in range(EPOCHS):
