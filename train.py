@@ -20,7 +20,7 @@ parser.add_argument('--seed', '-s', type=int, default=42,
                         help='Random seed')
 parser.add_argument('--data_directory', type=str, default='/work/ai4bio2024/brca_surv/LAB_WSI_Genomics/TCGA_BRCA/Data/wsi/features_UNI/pt_files',
                         help='Dataset directory')
-parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_surv/dataset/dataset_brca.csv',
+parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_surv/dataset/dataset_brca_wsi.csv',
                         help='label file path')
 parser.add_argument('--label', type=str, default='BRCA1',
                         help='Label to use for training')
@@ -126,7 +126,8 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     NUM_ACCUMULATION_STEPS = 8
     PATIENCE = 5
 
-    model = SATMIL(use_layernorm=True).to(device)
+    #model = ABMIL(use_layernorm=True).to(device)
+    model = MILNet().to(device)
     optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     criterion = nn.BCELoss().to(device)
 

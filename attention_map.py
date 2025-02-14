@@ -11,8 +11,13 @@ import h5py
 import openslide
 import pandas as pd
 from scipy.ndimage import gaussian_filter
+import argparse
 
+parser = argparse.ArgumentParser(description='BRCA Attention Map')
+parser.add_argument('--mid', '-m', type=int, default=0,
+                        help='ID of the model usef for attention over BRCA overexprection')
 
+args = parser.parse_args()
 
 def get_coordinates(original_coord, original_dim, new_dim):
     x_orig, y_orig = original_coord
@@ -36,8 +41,8 @@ else:
     print('No GPU!')
 
 
-model = ABMIL(use_layernorm=True, dropout=0.2)
-model.load_state_dict(torch.load('./model_weights.pth', weights_only=True))
+model = ABMIL(use_layernorm=True)
+model.load_state_dict(torch.load(f'./model_weights_{args.mid}.pth', weights_only=True))
 model = model.to(device)
 model.eval()
 
@@ -137,7 +142,6 @@ def get_heatmap(model, wsi, coord, out_dim, att, pre_processor):
     attention_map = attention_map.squeeze().cpu().numpy()
 
     return attention_map
-
 
 
 patch_dim = round(1024*width_mask/width)

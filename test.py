@@ -29,7 +29,7 @@ parser.add_argument('--seed', '-s', type=int, default=42,
                         help='Random seed')
 parser.add_argument('--data_directory', type=str, default='/work/ai4bio2024/brca_surv/LAB_WSI_Genomics/TCGA_BRCA/Data/wsi/features_UNI/pt_files',
                         help='Dataset directory')
-parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_surv/dataset/dataset_brca.csv',
+parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_surv/dataset/dataset_brca_wsi.csv',
                         help='label file path')
 parser.add_argument('--label', type=str, default='BRCA1',
                         help='Label to use for training')
@@ -74,8 +74,6 @@ _ , test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[
 test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
 
-model = SATMIL(use_layernorm=True)
-
 results = {
     'accuracy': [],
     'precision': [],
@@ -90,6 +88,10 @@ results = {
 for f in range(FOLDS):
 
     print(f'######## Testing model {f+1} ########\n')
+
+    #model = ABMIL(use_layernorm=True)
+    model = MILNet()
+
 
     model.load_state_dict(torch.load(f'./model_weights_{f+1}.pth'))
     model = model.to(device)

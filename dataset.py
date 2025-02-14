@@ -2,8 +2,34 @@ import torch
 import os
 import pandas as pd
 from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-from sklearn.model_selection import train_test_split
+
+###########
+
+import numpy as np
+import openslide
+from PIL import Image
+import h5py
+
+
+def add_position(data, file_name, id):
+
+    wsi_path = f'/work/h2020deciderficarra_shared/TCGA/BRCA/data/{id}/{file_name}.svs'
+    slide = openslide.OpenSlide(wsi_path)
+    # Ottieni le dimensioni dell'immagine
+    width, height= slide.dimensions
+
+    h5_file_path = f'/work/h2020deciderficarra_shared/TCGA/BRCA/features_UNI/h5_files/{file_name}.h5'
+    with h5py.File(h5_file_path, 'r') as f:
+        coordinates = f['coords'][:]
+    
+    coordinates = torch.tensor(coordinates)
+
+    coordinates[0:,0] = coordinates[0:,0]/width
+    coordinates[0:,1] = coordinates[0:,1]/height
+
+    data = torch.cat((data, coordinates), dim = 1)
+    return data
+
 
 class UNIDataset(Dataset):
     def __init__(self, data_frame, data_dir, label, seed, transform=None, max_patches = 0):
@@ -26,6 +52,10 @@ class UNIDataset(Dataset):
 
         file_path = os.path.join(self.data_dir, file_name)
         data = torch.load(file_path + '.pt', weights_only=True)
+
+        #esperimento
+        print(self.data_frame.columns)
+        data = add_position(data, file_name, self.data_frame.iloc[idx]['id'])
 
         if self.max_patches:
             n_patch = data.shape[0]
