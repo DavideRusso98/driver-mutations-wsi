@@ -54,7 +54,7 @@ class UNIDataset(Dataset):
         data = torch.load(file_path + '.pt', weights_only=True)
 
         #esperimento
-        data = add_position(data, file_name, self.data_frame.iloc[idx]['id'])
+        #data = add_position(data, file_name, self.data_frame.iloc[idx]['id'])
 
         if self.max_patches:
             n_patch = data.shape[0]

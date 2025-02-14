@@ -41,7 +41,8 @@ else:
     print('No GPU!')
 
 
-model = ABMIL(use_layernorm=True)
+#model = ABMIL(use_layernorm=True)
+model = MILNet()
 model.load_state_dict(torch.load(f'./model_weights_{args.mid}.pth', weights_only=True))
 model = model.to(device)
 model.eval()

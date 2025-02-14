@@ -9,7 +9,7 @@ warnings.simplefilter("ignore", UserWarning)
 
 class ABMIL(nn.Module):
     def __init__(self,
-                     input_dim=1026,
+                     input_dim=1024,
                      inner_dim=64, 
                      output_dim=1, 
                      use_layernorm=False, 
@@ -64,7 +64,7 @@ class ABMIL(nn.Module):
 ##########################################
 
 class FCLayer(nn.Module):
-    def __init__(self, in_size = 1026, out_size=1):
+    def __init__(self, in_size = 1024, out_size=1):
         super(FCLayer, self).__init__()
         self.fc = nn.Sequential(nn.Linear(in_size, out_size), nn.Sigmoid())
     def forward(self, feats):
@@ -72,7 +72,7 @@ class FCLayer(nn.Module):
         return feats, x
 
 class BClassifier(nn.Module):
-    def __init__(self, input_size = 1026, output_dim = 1, inner_dim = 128, dropout_v=0.0, nonlinear=True, passing_v=True): # K, L, N
+    def __init__(self, input_size = 1024, output_dim = 1, inner_dim = 128, dropout_v=0.0, nonlinear=True, passing_v=True): # K, L, N
         super(BClassifier, self).__init__()
         if nonlinear:
             self.q = nn.Sequential(nn.Linear(input_size, inner_dim), nn.ReLU(), nn.Linear(inner_dim, inner_dim), nn.Tanh())
