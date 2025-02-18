@@ -8,32 +8,32 @@
 ```
 Testing BRCA1 over exprection
 
-Accuracy: 0.6557
+Accuracy: 0.6509
 
-Precision: 0.7099
+Precision: 0.7638
 
-Recall: 0.8156
+Recall: 0.6879
 
-F1 Score: 0.7591
+F1 Score: 0.7239
 
-AUC-ROC: 0.6471
+AUC-ROC: 0.6728
 
-Log Loss: 0.6648
+Log Loss: 0.7660
 
-Matthews Correlation Coefficient (MCC): 0.1708
+Matthews Correlation Coefficient (MCC): 0.2556
 
 Confusion Matrix:
-[[0.34 0.66]
- [0.18 0.82]]
+[[0.58 0.42]
+ [0.31 0.69]]
 
 Classification Report:
               precision    recall  f1-score   support
 
-         0.0       0.48      0.34      0.40        71
-         1.0       0.71      0.82      0.76       141
+         0.0       0.48      0.58      0.53        71
+         1.0       0.76      0.69      0.72       141
 
-    accuracy                           0.66       212
-   macro avg       0.59      0.58      0.58       212
-weighted avg       0.63      0.66      0.64       212
+    accuracy                           0.65       212
+   macro avg       0.62      0.63      0.62       212
+weighted avg       0.67      0.65      0.66       212
 
 ```
