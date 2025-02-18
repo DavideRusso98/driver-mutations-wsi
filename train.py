@@ -127,7 +127,7 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     PATIENCE = 5
 
     #model = ABMIL(use_layernorm=True).to(device)
-    model = MILNet().to(device)
+    model = DS_ABMIL().to(device)
     optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     criterion = nn.BCELoss().to(device)
 
