@@ -147,7 +147,10 @@ class CLAM_SB(nn.Module):
             total_inst_loss = 0.0
             all_preds = []
             all_targets = []
-            inst_labels = F.one_hot(label, num_classes=self.n_classes).squeeze() #binarize label
+            print(f"Label dtype: {label.dtype}, Label shape: {label.shape}")
+            # print(label)
+            inst_labels = F.one_hot(label.round().long() , num_classes=self.n_classes).squeeze() #binarize label
+            # print(inst_labels)
             for i in range(len(self.instance_classifiers)):
                 inst_label = inst_labels[i].item()
                 classifier = self.instance_classifiers[i]

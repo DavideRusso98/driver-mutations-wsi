@@ -98,16 +98,17 @@ def train_loop_clam(epoch, model, loader, optimizer, n_classes, bag_weight, writ
     for batch_idx, (data, label) in enumerate(loader):
         data, label = data.to(device), label.to(device)
 
-        logits, Y_prob, Y_hat, _, _ = model(data)
+        logits, Y_prob, Y_hat, _, _ = model(data,label=label)
 
-        loss = loss_fn(logits, logits)
+        loss = loss_fn(logits, label)
         
 
         running_loss += loss.item()
-        
+        # if batch_idx % 10 == 0:
+        #    print(f"Batch {batch_idx} - Loss: {running_loss:.4f} Real: {label.tolist()}")
 
         # Aggiornamento pesi
-        # optimizer.zero_grad()
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
     epoch_loss = running_loss / len(train_loader)
@@ -115,8 +116,7 @@ def train_loop_clam(epoch, model, loader, optimizer, n_classes, bag_weight, writ
 
     torch.cuda.empty_cache()
         # Debugging output
-    #     if batch_idx % 10 == 0:
-    #         print(f"Batch {batch_idx} - Loss: {loss_value:.4f} Real: {label.tolist()}")
+   
 
     # # Media degli errori
     # train_loss /= len(loader)
@@ -168,8 +168,9 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
         with torch.no_grad():
             for data, label in tqdm(val_loader):
                 data = data.to(device)
+                label = label.to(device)
                 logits, Y_prob, Y_hat, _, _ = model(data)
-                loss = loss_fn(logits, logits)
+                loss = loss_fn(logits, label)
                 val_loss += loss.item()
 
         val_loss /= len(val_loader)

@@ -41,7 +41,7 @@ args = parser.parse_args()
 
 SEED = args.seed
 FOLDS = args.folds
-MODEL = "CLAM"
+MODEL = "clam"
 def setup(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
     random.seed(seed)
@@ -91,7 +91,7 @@ for f in range(FOLDS):
     print(f'######## Testing model {f+1} ########\n')
 
     #model = ABMIL(use_layernorm=True)
-    model = CLAM_SB(n_classes=1,instance_loss_fn=loss_fn).to(device)
+    model = CLAM_SB(n_classes=1).to(device)
 
 
 
@@ -106,8 +106,8 @@ for f in range(FOLDS):
         for data, label in tqdm(test_loader):
             data = data.to(device)
             label = label.to(device)
-            output, _ = model(data)
-            y_pred.append(output)
+            logits, Y_prob, Y_hat, _, _ = model(data)
+            y_pred.append(logits) ## TODO
             y_true.append(label)
 
         y_pred = torch.cat(y_pred)
