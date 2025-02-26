@@ -25,8 +25,8 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning) 
 
 parser = argparse.ArgumentParser(description='BRCA overexprection')
-parser.add_argument('--seed', '-s', type=int, default=42,
-                        help='Random seed')
+parser.add_argument('--seed', '-s', type=int, default=17,
+                        help='Random seed')#42
 parser.add_argument('--data_directory', type=str, default='/work/ai4bio2024/brca_surv/LAB_WSI_Genomics/TCGA_BRCA/Data/wsi/features_UNI/pt_files',
                         help='Dataset directory')
 parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_surv/dataset/dataset_brca_wsi.csv',
@@ -40,6 +40,8 @@ args = parser.parse_args()
 
 SEED = args.seed
 FOLDS = args.folds
+
+print(f'Seed: {SEED}')
 
 def setup(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -144,14 +146,18 @@ for f in range(FOLDS):
     print(f"Classification Report:\n{class_report}\n")
 
 mean_results = {metric: np.mean(values) for metric, values in results.items() if metric not in ['confusion_matrices']}
+std_results = {metric: np.std(values) for metric, values in results.items() if metric not in ['confusion_matrices']}
 cf_mean = np.mean(results['confusion_matrices'], axis=0)
+cf_std = np.std(results['confusion_matrices'], axis=0)
 
 print("########################################\n")
 print("############# Final Report #############\n")
 print("########################################\n")
 for metric, mean_value in mean_results.items():
-    print(f"{metric.capitalize()}: {mean_value:.4f}\n")
+    std_value = std_results[metric]
+    print(f"{metric.capitalize()}: {mean_value:.4f} ± {std_value:.4f}\n")
 print(f'Confusion Matrix:\n{np.round(cf_mean, 2)}')
+print(f'Confusion Matrix std:\n{np.round(cf_std, 2)}')
 
 metric = 'accuracy'
 best_model_index = np.argmax(results[metric])

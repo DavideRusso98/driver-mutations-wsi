@@ -11,12 +11,13 @@ from torch.optim import Adam, RAdam
 import torch.nn as nn
 from models import *
 from dataset import UNIDataset
+import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 parser = argparse.ArgumentParser(description='BRCA overexprection')
-parser.add_argument('--seed', '-s', type=int, default=42,
+parser.add_argument('--seed', '-s', type=int, default=17,
                         help='Random seed')
 parser.add_argument('--data_directory', type=str, default='/work/ai4bio2024/brca_surv/LAB_WSI_Genomics/TCGA_BRCA/Data/wsi/features_UNI/pt_files',
                         help='Dataset directory')
@@ -34,6 +35,8 @@ args = parser.parse_args()
 SEED = args.seed
 EPOCHS = args.epoch
 FOLDS = args.folds
+
+print(f'Seed: {SEED}')
 
 def setup(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -112,6 +115,11 @@ X = train_val_df.drop(args.label, axis = 1)
 
 skf = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=SEED)
 
+loss_train_list = []
+loss_val_list = []
+
+plt.figure(figsize=(10, 15))
+
 for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     print(f'\n#########  Fold {f+1}/{FOLDS}  #########\n')
 
@@ -132,6 +140,9 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     criterion = nn.BCELoss().to(device)
 
     early_stopping = EarlyStopping(patience=PATIENCE, verbose=True)
+
+    loss_train = []
+    loss_val = []
 
 
     for e in range(EPOCHS):
@@ -154,6 +165,7 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
 
         epoch_loss = running_loss / len(train_loader)
         print(f'Epoch {e + 1}/{EPOCHS}, Taining Loss: {epoch_loss:.4f}')
+        loss_train.append(epoch_loss)
 
         torch.cuda.empty_cache()
 
@@ -170,11 +182,42 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
 
         val_loss /= len(val_loader)
         print(f'Epoch {e+1}/{EPOCHS}, Validation Loss: {val_loss:.4f}')
+        loss_val.append(val_loss)
 
         if early_stopping(val_loss):
             print("Early stopped")
             break
 
     torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+    loss_train_list.append(loss_train)
+    loss_val_list.append(loss_val)
+
+#####  Plot  #####
+
+plt.figure(figsize=(10, 5*FOLDS))
+
+for i in range(len(loss_train_list)):
+    loss_train = loss_train_list[i]
+    loss_val = loss_val_list[i]
+    epochs = range(1, len(loss_train) + 1)
+
+    loss_train = [round(loss, 4) for loss in loss_train]
+    loss_val = [round(loss, 4) for loss in loss_val]
+
+    plt.subplot(len(loss_train_list), 1, i + 1)  # (righe, colonne, indice)
+    plt.plot(epochs, loss_train, label='Training Loss', marker='o', linestyle='-', color='red')
+    plt.plot(epochs, loss_val, label='Validation Loss', marker='o', linestyle='-', color='blue')
+
+    plt.title(f'Fold {i+1}/{FOLDS}')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.xticks(epochs)
+    plt.legend()
+    plt.grid()
+
+
+plt.tight_layout()
+plt.savefig('./loss_plot.png')
+#plt.show()
 
 print('Done!')
