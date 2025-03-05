@@ -141,8 +141,8 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     NUM_ACCUMULATION_STEPS = 8
     PATIENCE = 3
 
-    model = ABMIL_Multimodal(use_layernorm=True).to(device)
-    #model = DS_ABMIL().to(device)
+    #model = ABMIL_Multimodal(use_layernorm=True).to(device)
+    model = DS_ABMIL().to(device)
     optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     criterion = nn.BCELoss().to(device)
 
