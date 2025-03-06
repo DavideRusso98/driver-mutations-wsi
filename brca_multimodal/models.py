@@ -179,9 +179,10 @@ class ATTN_Score(nn.Module):
         return attn_scores
 
 
-class BClassifier(nn.Module):
+
+class BCMlassifier(nn.Module):
     def __init__(self, input_size = 1024, genomics_input_dim=19960, output_dim = 1, inner_dim = 128, dropout_v=0.0, genomics_dropout = 0.5, nonlinear=True, passing_v=True): # K, L, N
-        super(BClassifier, self).__init__()
+        super(BCMlassifier, self).__init__()
         if nonlinear:
             self.q = nn.Sequential(nn.Linear(input_size, inner_dim), nn.ReLU(), nn.Linear(inner_dim, inner_dim), nn.Tanh())
         else:
@@ -236,19 +237,94 @@ class DS_ABMIL(nn.Module):
     def __init__(self):
         super(DS_ABMIL, self).__init__()
         self.i_classifier = ATTN_Score(use_layernorm=True)
-        self.b_classifier = BClassifier()
+        self.b_classifier = BCMlassifier()
         
     def forward(self, x, genomics):
         scores = self.i_classifier(x)
         prediction_bag, A= self.b_classifier(x, scores, genomics)
         
-        return prediction_bag, A        
+        return prediction_bag, A  
+
+#################################################################
+
+class FCLayer(nn.Module):
+    def __init__(self, in_size = 1024, out_size=1):
+        super(FCLayer, self).__init__()
+        self.fc = nn.Sequential(nn.Linear(in_size, out_size), nn.Sigmoid())
+    def forward(self, feats):
+        x = self.fc(feats)
+        return feats, x
+
+class BClassifier(nn.Module):
+    def __init__(self, input_size = 1024, genomics_input_dim=19960, output_dim = 1, inner_dim = 128, dropout_v=0.0, genomics_dropout = 0.5, nonlinear=True, passing_v=True): # K, L, N
+        super(BClassifier, self).__init__()
+        if nonlinear:
+            self.q = nn.Sequential(nn.Linear(input_size, inner_dim), nn.ReLU(), nn.Linear(inner_dim, inner_dim), nn.Tanh())
+        else:
+            self.q = nn.Linear(input_size, inner_dim)
+        if passing_v:
+            self.v = nn.Sequential(
+                nn.Dropout(dropout_v),
+                nn.Linear(input_size, inner_dim),
+                nn.ReLU()
+            )
+        else:
+            self.v = nn.Identity()
+
+        self.genomics_dropout = nn.Dropout(genomics_dropout)
+        self.fc_genomics = nn.Sequential(
+                                            nn.Linear(genomics_input_dim, inner_dim),
+                                            nn.ReLU(),
+                                            nn.Linear(inner_dim, inner_dim),
+                                        )
+        
+        final_layer_input_dim = 2*inner_dim
+
+        self.fc1 = nn.Linear(final_layer_input_dim, inner_dim)
+        self.fc2 = nn.Linear(inner_dim, inner_dim//4)
+        self.fc3 = nn.Linear(inner_dim//4, output_dim)
+    
+        
+    def forward(self, feats, c, genomics):
+        device = feats.device
+        V = self.v(feats)
+        Q = self.q(feats)
+        
+        _, m_indices = torch.max(c, dim=1)
+        critical_idx = m_indices.squeeze().item()
+        critical_patch = feats[0, critical_idx, :]
+        critical_patch = critical_patch.unsqueeze(0).unsqueeze(0)
+        q_max = self.q(critical_patch)
+        A = torch.bmm(q_max, Q.transpose(1, 2))# controlla il transpose
+        A = F.softmax( A / torch.sqrt(torch.tensor(Q.shape[2], dtype=torch.float32, device=device)), dim=-1) # questa sarà poi l'attention?
+        B = torch.sum(A.transpose(1, 2)*V, dim = 1)#torch.bmm(A, V)
+
+        genomics = self.genomics_dropout(genomics)
+        genomics_embedding = self.fc_genomics(genomics)
+        x = torch.cat([B,genomics_embedding], dim=1)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x)) # relu o tanh
+        output = torch.sigmoid(self.fc3(x))
+
+        return output, A
+    
+class MILNet(nn.Module):
+    def __init__(self):
+        super(MILNet, self).__init__()
+        self.i_classifier = FCLayer()
+        self.b_classifier = BClassifier()
+        
+    def forward(self, x, genomics):
+        feats, classes = self.i_classifier(x)
+        prediction_bag, A= self.b_classifier(feats, classes, genomics)
+        
+        return prediction_bag, A      
 
 
 if __name__ == '__main__':
     device = 'cuda'
     #model = ABMIL_Multimodal().to(device)
-    model = DS_ABMIL().to(device)
+    model = MILNet().to(device)
     model.eval()
     
     data = torch.rand((300, 1024), dtype=torch.float)

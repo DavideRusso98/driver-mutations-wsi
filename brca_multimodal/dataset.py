@@ -45,7 +45,7 @@ class UNIDataset(Dataset):
         # genomic data
         case_id = self.data_frame.iloc[idx]['case_id']
         genes = self.gene_expr.loc[self.gene_expr['case_id'] == case_id].iloc[0, 1:]
-        genes = torch.tensor(genes, dtype=torch.float32)#.unsqueeze(0) 
+        genes = torch.tensor(genes.to_numpy().astype(np.float32), dtype=torch.float32)#.unsqueeze(0) 
 
         if self.transform:
             data = self.transform(data)
