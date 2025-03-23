@@ -71,14 +71,17 @@ class EarlyStopping:
         self.verbose = verbose
         self.counter = 0
         self.best_loss = float('inf')
+        self.save_weights = True
 
     def __call__(self, loss):
         if loss < self.best_loss:
             self.best_loss = loss
             self.counter = 0
+            self.save_weights = True
             if self.verbose:
-                print(f'New best loss: {self.best_loss}')
+                print(f'New best loss: {self.best_loss:.4f}')
         else:
+            self.save_weights = False
             self.counter += 1
             if self.verbose:
                 print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
@@ -142,7 +145,7 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     PATIENCE = 3
 
     #model = ABMIL_Multimodal(use_layernorm=True).to(device)
-    model = MILNet().to(device)
+    model = ONLY_GEN().to(device)
     optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     criterion = nn.BCELoss().to(device)
 
@@ -200,7 +203,9 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
             print("Early stopped")
             break
 
-    torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+        if early_stopping.save_weights:
+            torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+
     loss_train_list.append(loss_train)
     loss_val_list.append(loss_val)
 
