@@ -7,7 +7,7 @@ import pandas as pd
 import argparse
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split, StratifiedKFold
-from torch.optim import Adam, RAdam
+from torch.optim import Adam, RAdam, AdamW
 import torch.nn as nn
 from models import *
 from dataset import UNIDataset
@@ -69,14 +69,17 @@ class EarlyStopping:
         self.verbose = verbose
         self.counter = 0
         self.best_loss = float('inf')
+        self.save_weights = True
 
     def __call__(self, loss):
         if loss < self.best_loss:
             self.best_loss = loss
             self.counter = 0
+            self.save_weights = True
             if self.verbose:
-                print(f'New best loss: {self.best_loss}')
+                print(f'New best loss: {self.best_loss:.4f}')
         else:
+            self.save_weights = False
             self.counter += 1
             if self.verbose:
                 print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
@@ -134,10 +137,13 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     NUM_ACCUMULATION_STEPS = 8
     PATIENCE = 5
 
-    #model = ABMIL(use_layernorm=True).to(device)
-    model = DS_ABMIL().to(device)
-    optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    model = ABMIL(use_layernorm=True).to(device)
+    #model = DS_ABMIL().to(device)
+    #optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    optimizer = AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     criterion = nn.BCELoss().to(device)
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
     early_stopping = EarlyStopping(patience=PATIENCE, verbose=True)
 
@@ -163,8 +169,9 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
 
             optimizer.step()
 
+        scheduler.step()
         epoch_loss = running_loss / len(train_loader)
-        print(f'Epoch {e + 1}/{EPOCHS}, Taining Loss: {epoch_loss:.4f}')
+        print(f'Epoch {e + 1}/{EPOCHS}, Training Loss: {epoch_loss:.4f}')
         loss_train.append(epoch_loss)
 
         torch.cuda.empty_cache()
@@ -184,11 +191,14 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
         print(f'Epoch {e+1}/{EPOCHS}, Validation Loss: {val_loss:.4f}')
         loss_val.append(val_loss)
 
+
         if early_stopping(val_loss):
             print("Early stopped")
             break
 
-    torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+        if early_stopping.save_weights:
+            torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+
     loss_train_list.append(loss_train)
     loss_val_list.append(loss_val)
 
