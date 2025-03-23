@@ -7,7 +7,7 @@ import pandas as pd
 import argparse
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
-from torch.optim import Adam, RAdam
+from torch.optim import Adam, RAdam, AdamW
 import torch.nn as nn
 from models import *
 from dataset import UNIDataset
@@ -69,14 +69,17 @@ class EarlyStopping:
         self.verbose = verbose
         self.counter = 0
         self.best_loss = float('inf')
+        self.save_weights = True
 
     def __call__(self, loss):
         if loss < self.best_loss:
             self.best_loss = loss
             self.counter = 0
+            self.save_weights = True
             if self.verbose:
-                print(f'New best loss: {self.best_loss}')
+                print(f'New best loss: {self.best_loss:.4f}')
         else:
+            self.save_weights = False
             self.counter += 1
             if self.verbose:
                 print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
@@ -129,14 +132,15 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
 
-    LR = 0.0001
-    WEIGHT_DECAY = 0.0001
+    LR = 0.001#0.0001
+    WEIGHT_DECAY = 0.001
     NUM_ACCUMULATION_STEPS = 8
     PATIENCE = 5
 
     model = ABMIL(use_layernorm=True).to(device)
     #model = DS_ABMIL().to(device)
-    optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    #optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    optimizer = AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     #criterion = nn.BCELoss().to(device)
     criterion = nn.MSELoss().to(device)
 
@@ -192,7 +196,9 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
             print("Early stopped")
             break
 
-    torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+        if early_stopping.save_weights:
+            torch.save(model.state_dict(), f'./model_weights_{f+1}.pth')
+
     loss_train_list.append(loss_train)
     loss_val_list.append(loss_val)
 
