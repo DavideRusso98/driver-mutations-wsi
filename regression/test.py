@@ -156,7 +156,7 @@ for f in range(FOLDS):
     
     # Fai parte classification as regression
     # prendi soglia a mano...
-'''
+
     threshold = 4.7924171717171715
 
     y_pred = np.where(y_pred.numpy() > threshold, 1, 0)
@@ -209,7 +209,7 @@ print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][
 metric = 'f1'
 best_model_index = np.argmax(results[metric])
 print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][best_model_index]:.4f}")
-'''
+
 
 
 

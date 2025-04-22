@@ -29,7 +29,7 @@ parser.add_argument('--seed', '-s', type=int, default=17,
                         help='Random seed')#42
 parser.add_argument('--data_directory', type=str, default='/work/ai4bio2024/brca_surv/LAB_WSI_Genomics/TCGA_BRCA/Data/wsi/features_UNI/pt_files',
                         help='Dataset directory')
-parser.add_argument('--labels_file', type=str, default='/work/ai4bio2024/brca_surv/dataset/dataset_brca_wsi.csv',
+parser.add_argument('--labels_file', type=str, default='/homes/fdoronzio/ai4bio/data/dataset_brca_wsi_regression.csv',
                         help='label file path')
 parser.add_argument('--label', type=str, default='BRCA1',
                         help='Label to use for training')
@@ -71,7 +71,7 @@ data_dir = args.data_directory
 
 data_frame = pd.read_csv(csv_file)
 
-_ , test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
+_ , test_df = train_test_split(data_frame, test_size=0.2, random_state=SEED)
 
 test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label, seed=SEED, max_patches=4096)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
@@ -81,19 +81,41 @@ results = {
     'precision': [],
     'recall': [],
     'f1': [],
-    'auc_roc': [],
-    'log_loss': [],
     'mcc': [],
     'confusion_matrices': [],
-    'tp' : []
+
+    'mae' : [],
+    'mse' : [],
+    'rmse' : [],
+    'r2' : []
 }
+
+###############################################
+def mean_absolute_error(y_true, y_pred):
+    return torch.mean(torch.abs(y_true - y_pred)).item()
+
+
+def mean_squared_error(y_true, y_pred):
+    return torch.mean((y_true - y_pred) ** 2).item()
+
+
+def root_mean_squared_error(y_true, y_pred):
+    return math.sqrt(mean_squared_error(y_true, y_pred))
+
+
+def r_squared(y_true, y_pred):
+    ss_total = torch.sum((y_true - torch.mean(y_true)) ** 2)
+    ss_residual = torch.sum((y_true - y_pred) ** 2)
+    return 1 - (ss_residual / ss_total).item()
+
+################################################
 
 for f in range(FOLDS):
 
     print(f'######## Testing model {f+1} ########\n')
 
     #model = ABMIL(use_layernorm=True)
-    model = ABMIL_2()
+    model = DS_ABMIL()
 
 
     model.load_state_dict(torch.load(f'./model_weights_{f+1}.pth'))
@@ -106,7 +128,8 @@ for f in range(FOLDS):
         for data, label in tqdm(test_loader):
             data = data.to(device)
             label = label.to(device)
-            output, _ = model(data)
+            output_full, _ = model(data)
+            output = output_full[0]
             y_pred.append(output)
             y_true.append(label)
 
@@ -115,36 +138,53 @@ for f in range(FOLDS):
 
     y_pred = y_pred.cpu()
     y_true = y_true.cpu()
-    y_pred_binary = (y_pred > 0.5).float()
 
-    accuracy = accuracy_score(y_true.numpy(), y_pred_binary.numpy())
-    precision = precision_score(y_true.numpy(), y_pred_binary.numpy())
-    recall = recall_score(y_true.numpy(), y_pred_binary.numpy())
-    f1 = f1_score(y_true.numpy(), y_pred_binary.numpy())
-    auc_roc = roc_auc_score(y_true.numpy(), y_pred.numpy())
-    conf_matrix = confusion_matrix(y_true.numpy(), y_pred_binary.numpy(), normalize='true')
-    log_loss_value = log_loss(y_true.numpy(), y_pred.numpy())
-    mcc = matthews_corrcoef(y_true, y_pred_binary)
-    class_report = classification_report(y_true, y_pred_binary)
-    tp = conf_matrix[0,0]
+
+    mae = mean_absolute_error(y_true, y_pred)
+    mse = mean_squared_error(y_true, y_pred)
+    rmse = root_mean_squared_error(y_true, y_pred)
+    r2 = r_squared(y_true, y_pred)
+    
+    results['mae'].append(mae)
+    results['mse'].append(mse)
+    results['rmse'].append(rmse)
+    results['r2'].append(r2)
+
+    print(f'Test MAE: {mae:.4f}')
+    print(f'Test MSE: {mse:.4f}')
+    print(f'Test RMSE: {rmse:.4f}')
+    print(f'Test R²: {r2:.4f}')
+    
+    # Fai parte classification as regression
+    # prendi soglia a mano...
+
+    threshold = 4.7924171717171715
+
+    y_pred = np.where(y_pred.numpy() > threshold, 1, 0)
+    y_true = np.where(y_true.numpy() > threshold, 1, 0)
+
+    
+    #y_pred_binary = (y_pred > 0.5).float()
+
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    conf_matrix = confusion_matrix(y_true, y_pred, normalize='true')
+    mcc = matthews_corrcoef(y_true, y_pred)
+    class_report = classification_report(y_true, y_pred)
 
     results['accuracy'].append(accuracy)
     results['precision'].append(precision)
     results['recall'].append(recall)
     results['f1'].append(f1)
-    results['auc_roc'].append(auc_roc)
-    results['log_loss'].append(log_loss_value)
     results['mcc'].append(mcc)
     results['confusion_matrices'].append(conf_matrix)
-    results['tp'].append(tp)
 
     print(f"Accuracy: {accuracy:.4f}\n")
     print(f"Precision: {precision:.4f}\n")
     print(f"Recall: {recall:.4f}\n")
     print(f"F1 Score: {f1:.4f}\n")
-    print(f"AUC-ROC: {auc_roc:.4f}\n")
-    print(f"Log Loss: {log_loss_value:.4f}\n")
-    print(f"True Positive: {tp:.4f}\n")
     print(f"Matthews Correlation Coefficient (MCC): {mcc:.4f}\n")
     print(f"Confusion Matrix:\n{np.round(conf_matrix, 2)}\n")
     print(f"Classification Report:\n{class_report}\n")
@@ -171,9 +211,6 @@ metric = 'f1'
 best_model_index = np.argmax(results[metric])
 print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][best_model_index]:.4f}")
 
-metric = 'auc_roc'
-best_model_index = np.argmax(results['auc_roc'])
-print(f"\nBest model for {metric}: {best_model_index + 1} with {results[metric][best_model_index]:.4f}")
 
 
 

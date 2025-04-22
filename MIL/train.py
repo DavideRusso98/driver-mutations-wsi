@@ -138,7 +138,7 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
     PATIENCE = 5
 
     #model = ABMIL(use_layernorm=True).to(device)
-    model = ABMIL_2().to(device)
+    model = DS_ABMIL().to(device)
     #optimizer = RAdam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     optimizer = AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     criterion = nn.BCELoss().to(device)
@@ -161,8 +161,10 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
 
             optimizer.zero_grad()
 
-            output, _ = model(data)
-            loss = criterion(output, label)
+            output_full, _ = model(data)
+            output = output_full[0]
+            output_instance = output_full[1]
+            loss = 0.5*criterion(output, label) + 0.5*criterion(output_instance,label)
 
             running_loss += loss.item()
             loss.backward()
@@ -183,8 +185,10 @@ for f, (train_index, val_index) in enumerate(skf.split(X, y)):
             for data, label in tqdm(val_loader):
                 data = data.to(device)
                 label = label.to(device)
-                output, _ = model(data)
-                loss = criterion(output, label)
+                output_full, _ = model(data)
+                output = output_full[0]
+                output_instance = output_full[1]
+                loss = 0.5*criterion(output, label) + 0.5*criterion(output_instance,label)
                 val_loss += loss.item()
 
         val_loss /= len(val_loader)

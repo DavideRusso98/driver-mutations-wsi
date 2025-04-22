@@ -55,7 +55,7 @@ class ABMIL(nn.Module):
         # Final WSI embedding
         x = weighted_sum
 
-        x = torch.relu(self.fc1(x)) # relu o tanh
+        x = torch.tanh(self.fc1(x)) # relu o tanh
         output = torch.sigmoid(self.fc2(x))
         
         return output, attn_scores
@@ -131,8 +131,8 @@ class FCLayer(nn.Module):
         x = self.fc(feats)
         return feats, x
 
-class BClassifier(nn.Module):
-    def __init__(self, input_size = 1024, output_dim = 1, inner_dim = 128, dropout_v=0.0, nonlinear=True, passing_v=True): # K, L, N
+class BClassifier(nn.Module):#innerdim=128
+    def __init__(self, input_size = 1024, output_dim = 1, inner_dim = 64, dropout_v=0.0, nonlinear=True, passing_v=True): # K, L, N
         super(BClassifier, self).__init__()
         if nonlinear:
             self.q = nn.Sequential(nn.Linear(input_size, inner_dim), nn.ReLU(), nn.Linear(inner_dim, inner_dim), nn.Tanh())
@@ -155,16 +155,19 @@ class BClassifier(nn.Module):
         device = feats.device
         V = self.v(feats)
         Q = self.q(feats)
-        
-        # test gumbel softmax
 
         _, m_indices = torch.max(c, dim=1)
-        critical_idx = m_indices.squeeze().item()
-        critical_patch = feats[0, critical_idx, :]
 
-        # test gumbel softmax
+
+        critical_idx = m_indices.squeeze().item()#max prediction
+        critical_patch = feats[0, critical_idx, :]
         critical_patch = critical_patch.unsqueeze(0).unsqueeze(0)
         q_max = self.q(critical_patch)
+
+        # instance classifier
+        instance_score = torch.sigmoid(c[:,critical_idx,:])
+
+        ####
         A = torch.bmm(q_max, Q.transpose(1, 2))# controlla il transpose
         A = F.softmax( A / torch.sqrt(torch.tensor(Q.shape[2], dtype=torch.float32, device=device)), dim=-1) # questa sarà poi l'attention?
         B = torch.sum(A.transpose(1, 2)*V, dim = 1)#torch.bmm(A, V)
@@ -172,7 +175,7 @@ class BClassifier(nn.Module):
         x = torch.tanh(self.fc1(B)) # relu o tanh
         output = torch.sigmoid(self.fc2(x))
 
-        return output, A
+        return (output, instance_score), A
     
 class MILNet(nn.Module):
     def __init__(self):
@@ -182,9 +185,9 @@ class MILNet(nn.Module):
         
     def forward(self, x):
         feats, classes = self.i_classifier(x)
-        prediction_bag, A= self.b_classifier(feats, classes)
+        predictions, A = self.b_classifier(feats, classes)
         
-        return prediction_bag, A
+        return predictions, A
 
 
 #########################################################
@@ -193,7 +196,7 @@ class MILNet(nn.Module):
 class ATTN_Score(nn.Module):
     def __init__(self,
                      input_dim=1024,
-                     inner_dim=64, 
+                     inner_dim=64, #64
                      output_dim=1, 
                      use_layernorm=False, 
                      dropout=0.0,
@@ -236,7 +239,6 @@ class DS_ABMIL(nn.Module):
         super(DS_ABMIL, self).__init__()
         self.i_classifier = ATTN_Score(use_layernorm=True)
         self.b_classifier = BClassifier()
-        #self.b_classifier = BMClassifier()
         
     def forward(self, x):
         scores = self.i_classifier(x)
@@ -457,7 +459,7 @@ class Encoder(nn.Module):
 
 if __name__ == '__main__':
     device = 'cuda'
-    model = ABMIL_2().to(device)
+    model =MILNet().to(device)
     model.eval()
     
     path = '/home/fabio/Documenti/Università/Magistrale/Secondo Anno/Primo Semestre/AI for Bioinformatics/Progetto/TCGA/TCGA_BRCA/Data/wsi/features_UNI/pt_files/TCGA-3C-AALK-01A-01-TSA.B64ED65E-C91A-42C9-89A5-1B099C7112C3.pt'
