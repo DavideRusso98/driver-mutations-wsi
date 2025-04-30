@@ -14,7 +14,7 @@ from scipy.ndimage import gaussian_filter
 import argparse
 
 parser = argparse.ArgumentParser(description='BRCA Attention Map')
-parser.add_argument('--mid', '-m', type=int, default=0,
+parser.add_argument('--mid', '-m', type=int, default=1,
                         help='ID of the model usef for attention over BRCA overexprection')
 
 args = parser.parse_args()
@@ -41,7 +41,7 @@ else:
     print('No GPU!')
 
 
-# = ABMIL(use_layernorm=True)
+#model = ABMIL()
 model = DS_ABMIL()
 model.load_state_dict(torch.load(f'./model_weights_{args.mid}.pth', weights_only=True))
 model = model.to(device)
@@ -52,6 +52,9 @@ dataframe = pd.read_csv("/work/ai4bio2024/brca_surv/dataset/dataset_brca_wsi.csv
 patient_row = dataframe.loc[dataframe["case_id"] == patient_id].iloc[0]
 id_ = patient_row["id"]
 slide_id = patient_row["slide_id"]
+gene = 'BRCA1'
+ground_truth = patient_row[gene]
+print(f'Ground Trunth label of {patient_id} is {ground_truth}')
 
 wsi_path = f'/work/h2020deciderficarra_shared/TCGA/BRCA/data/{id_}/{slide_id}.svs'
 slide = openslide.OpenSlide(wsi_path)
@@ -78,6 +81,15 @@ data = data.unsqueeze(0)
 with torch.no_grad():
     data = data.to(device)
     output , attn_scores = model(data)
+
+if isinstance(output, tuple):
+    output = output[0]
+
+if output > 0.5:
+    output = 1
+else:
+    output = 0
+print(f'The predicted label of {patient_id} is {output}')
 
 attn_scores = attn_scores.squeeze().cpu().detach().numpy()
 attn_scores = (attn_scores - attn_scores.min()) / (attn_scores.max() - attn_scores.min())
