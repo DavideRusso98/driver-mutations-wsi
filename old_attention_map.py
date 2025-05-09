@@ -13,7 +13,9 @@ import argparse
 
 parser = argparse.ArgumentParser(description='BRCA Attention Map')
 parser.add_argument('--mid', '-m', type=int, default=1,
-                        help='ID of the model usef for attention over BRCA overexprection')
+                        help='ID of the model used for attention over BRCA overexprection')
+parser.add_argument('--sid', '-s', type=str, default='TCGA-E2-A155',
+                        help='Identifier of the slide to be used for computing the attention map')
 
 args = parser.parse_args()
 
@@ -47,7 +49,7 @@ model.load_state_dict(torch.load(f'./model_weights_{args.mid}.pth', weights_only
 model = model.to(device)
 model.eval()
 
-patient_id = 'TCGA-E2-A155'
+patient_id = args.sid#'TCGA-E2-A155'
 dataframe = pd.read_csv("/work/ai4bio2024/brca_surv/dataset/dataset_brca_wsi.csv")
 patient_row = dataframe.loc[dataframe["case_id"] == patient_id].iloc[0]
 id_ = patient_row["id"]

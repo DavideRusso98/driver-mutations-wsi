@@ -111,6 +111,9 @@ class BClassifier(nn.Module):
         critical_patch = feats[0, critical_idx, :]
         critical_patch = critical_patch.unsqueeze(0).unsqueeze(0)
         q_max = self.q(critical_patch)
+
+        instance_score = c[:,critical_idx,:]
+
         A = torch.bmm(q_max, Q.transpose(1, 2))# controlla il transpose
         A = F.softmax( A / torch.sqrt(torch.tensor(Q.shape[2], dtype=torch.float32, device=device)), dim=-1) # questa sarà poi l'attention?
         B = torch.sum(A.transpose(1, 2)*V, dim = 1)#torch.bmm(A, V)
@@ -119,7 +122,7 @@ class BClassifier(nn.Module):
         x = torch.relu(self.fc2(x))
         output = self.fc3(x)
 
-        return output, A
+        return (output, instance_score), A
     
 class MILNet(nn.Module):
     def __init__(self):

@@ -92,8 +92,7 @@ for f in range(FOLDS):
 
     print(f'######## Testing model {f+1} ########\n')
 
-    #model = ABMIL(use_layernorm=True)
-    model = ABMIL_2()
+    model = ABMIL()
 
 
     model.load_state_dict(torch.load(f'./model_weights_{f+1}.pth'))

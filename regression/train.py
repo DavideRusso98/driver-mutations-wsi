@@ -95,22 +95,6 @@ data_dir = args.data_directory
 data_frame = pd.read_csv(csv_file)
 
 
-'''test_size=0.15
-val_size=0.15
-train_val_df, test_df = train_test_split(data_frame, test_size=test_size, stratify = data_frame[args.label], random_state=SEED)
-val_size_adjusted = val_size / (1 - test_size)
-train_df, val_df = train_test_split(train_val_df, test_size=val_size_adjusted, stratify = train_val_df[args.label], random_state=SEED)'''
-
-'''train_df, test_df = train_test_split(data_frame, test_size=0.2, stratify = data_frame[args.label], random_state=SEED)
-
-train_dataset = UNIDataset(data_frame=train_df, data_dir=data_dir, label = args.label)
-#test_dataset = UNIDataset(data_frame=test_df, data_dir=data_dir, label = args.label)
-val_dataset = UNIDataset(data_frame=val_df, data_dir=data_dir, label = args.label)
-
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
-#test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, pin_memory=True, num_workers=1)
-'''
 
 train_val_df, test_df = train_test_split(data_frame, test_size=0.2, random_state=SEED)
 y = train_val_df[args.label]
