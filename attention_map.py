@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(description='BRCA Attention Map')
 parser.add_argument('--mid', '-m', type=int, default=1,
                         help='ID of the model used for attention over BRCA overexprection')
 parser.add_argument('--sid', '-s', type=str, default='TCGA-E2-A155',
-                        help='Identifier of the slide to be used for computing the attention map') #'TCGA-EW-A2FW'
+                        help='Identifier of the patient to be used for computing the attention map') #'TCGA-EW-A2FW'
 
 args = parser.parse_args()
 
